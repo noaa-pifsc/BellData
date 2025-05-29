@@ -1,0 +1,26 @@
+---
+title: "CreateGrid"
+output: html_document
+---
+
+| Acknowledgement
+| This repository draws on code and uses data from [Bell et al. 2021](https://doi.org/10.1038/s41893-021-00745-z)
+| which are found in that paper's repository: <https://osf.io/qa8w4/>
+
+# Purpose
+The purpose of this script is to pull out the grid centers and create the new
+4x4-deg grid for the location choice modeling.
+
+```{r}
+# Load libraries
+library(here)
+```
+
+```{r}
+# Run script from above repo, with thanks to I. Senina
+# This script has a handful of functions that will allow us to read in the 
+#SEAPODYM output
+source("read_varDYM.R")
+```
+
+
