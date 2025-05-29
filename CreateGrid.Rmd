@@ -24,3 +24,28 @@ source("read_varDYM.R")
 ```
 
 
+```{r}
+# Load historical adult bigeye tuna biomass
+# This uses a function that was read in in the above chunk
+historical_bet_adult <- read.var.dym(here("HISTORICAL", "output", "bet_adult.dym"))
+```
+```{r}
+# Access grid info
+lat <- historical_bet_adult$y
+lon <- historical_bet_adult$x
+
+# Pull out area of interest
+lat_HILL_idx <- which(lat >= 0 & lat <= 45)
+lat_HILL_original2x2 <- lat[lat_HILL_idx]
+
+lon_HILL_idx <- which(lon >= 180 & lon <= 245)
+lon_HILL_original2x2 <- lon[lon_HILL_idx]
+
+# Coarsen the grid
+lat_HILL_centers4x4 <- seq(mean(lat_HILL_original2x2[1:2]), 45, 4)
+lon_HILL_centers4x4 <- seq(mean(lon_HILL_original2x2[1:2]), 245, 4)
+
+lat_HILL_edges4x4 <- seq((lat_HILL_centers4x4[1] - 2), (tail(lat_HILL_centers4x4, n=1) + 2), 4)
+lon_HILL_edges4x4 <- seq((lon_HILL_centers4x4[1] - 2), (tail(lon_HILL_centers4x4, n=1) + 2), 4)
+```
+
