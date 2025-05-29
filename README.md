@@ -4,7 +4,7 @@
 > which are found in that paper's repository: <https://osf.io/qa8w4/>
 > 
 > The scripts needed to run the code here are:  
-> read_varDYM.R
+> read_varDYM.R  
 > You should access them from their original source.
 >
 > The data used to run the code here are:  
