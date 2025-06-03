@@ -49,3 +49,12 @@ lat_HILL_edges4x4 <- seq((lat_HILL_centers4x4[1] - 2), (tail(lat_HILL_centers4x4
 lon_HILL_edges4x4 <- seq((lon_HILL_centers4x4[1] - 2), (tail(lon_HILL_centers4x4, n=1) + 2), 4)
 ```
 
+```{r}
+# Save data 
+# In four different files, because everything is a different length.  Sigh
+write.csv(lat_HILL_centers4x4, "lat_HILL_centers4x4.csv")
+write.csv(lon_HILL_centers4x4, "lon_HILL_centers4x4.csv")
+write.csv(lat_HILL_edges4x4, "lat_HILL_edges4x4.csv")
+write.csv(lon_HILL_edges4x4, "lon_HILL_edges4x4.csv")
+```
+
