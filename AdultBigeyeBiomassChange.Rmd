@@ -1,0 +1,152 @@
+---
+title: "AdultBigeyeBiomassChange"
+output: html_document
+---
+
+| Acknowledgement
+| This repository draws on code and uses data from [Bell et al. 2021](https://doi.org/10.1038/s41893-021-00745-z)
+| which are found in that paper's repository: <https://osf.io/qa8w4/>
+
+# Purpose
+The purpose of this script is to pull out the grid centers and create the new
+4x4-deg grid for the location choice modeling.
+
+```{r}
+# Load libraries
+library(here)
+library(tidyverse, quietly = TRUE)
+```
+
+```{r}
+# Run script from above repo, with thanks to I. Senina
+# This script has a handful of functions that will allow us to read in the 
+# SEAPODYM output
+source("read_varDYM.R")
+```
+
+```{r}
+# Load adult bigeye tuna biomass
+# This uses a function that was read in in the above chunk
+
+# Historical data aren't actually used for Fig. 2 in Bell et al. 2021 
+# (they end in December 2010 and Fig.2 is 2011-2020 and 2044-2053).
+# But we used them to create the gridding.  We can confirm projection grids match
+historical_bet_adult <- read.var.dym(here("HISTORICAL", "output", "bet_adult.dym"))
+
+# RCP4.5
+gfdl_45_bet_adult <- read.var.dym(here("GFDL", "REF", "output", "output_F0", "bet_adult.dym"))
+ipsl_45_bet_adult <- read.var.dym(here("IPSL", "REF", "output", "output_F0", "bet_adult.dym"))
+miroc_45_bet_adult <- read.var.dym(here("MIROC", "REF", "output", "output_F0", "bet_adult.dym"))
+mpi_45_bet_adult <- read.var.dym(here("MPI", "REF", "output", "output_F0", "bet_adult.dym"))
+
+# RCP8.5
+gfdl_85_bet_adult <- read.var.dym(here("CC", "GFDL", "REF", "output", "output_F0", "bet_adult.dym"))
+ipsl_85_bet_adult <- read.var.dym(here("CC 2", "IPSL", "REF", "output", "output_F0", "bet_adult.dym"))
+miroc_85_bet_adult <- read.var.dym(here("CC 3", "MIROC", "REF", "output", "output_F0", "bet_adult.dym"))
+mpi_85_bet_adult <- read.var.dym(here("CC 4", "MPI", "REF", "output", "output_F0", "bet_adult.dym"))
+```
+
+```{r}
+# Load grid data created using CreateGrid.Rmd
+# Remove leading column that just numbers the entries
+# We're also going to rename latitude's 'x' to 'y'
+lat_edges <- read_csv("lat_HILL_edges4x4.csv", show_col_types = FALSE)
+lat_edges <- lat_edges |>
+  rename(y = x) |>
+  mutate(...1 = NULL)
+
+lon_edges <- read_csv("lon_HILL_edges4x4.csv", show_col_types = FALSE)
+lon_edges <- lon_edges |>
+  mutate(...1 = NULL)
+
+lat_centers <- read_csv("lat_HILL_centers4x4.csv", show_col_types = FALSE)
+lat_centers <- lat_centers |>
+  rename(y = x) |>
+  mutate(...1 = NULL)
+
+lon_centers <- read_csv("lon_HILL_centers4x4.csv", show_col_types = FALSE)
+lon_centers <- lon_centers |>
+  mutate(...1 = NULL)
+```
+
+
+```{r}
+# Let's test whether each scenario uses the same grid (x-y-t)
+test45_x1 <- which(gfdl_45_bet_adult$x == ipsl_45_bet_adult$x)
+test45_x2 <- which(gfdl_45_bet_adult$x == miroc_45_bet_adult$x)
+test45_x3 <- which(gfdl_45_bet_adult$x == mpi_45_bet_adult$x)
+length(gfdl_45_bet_adult$x) == length(test45_x1)
+length(gfdl_45_bet_adult$x) == length(test45_x2)
+length(gfdl_45_bet_adult$x) == length(test45_x3)
+
+test45_y1 <- which(gfdl_45_bet_adult$y == ipsl_45_bet_adult$y)
+test45_y2 <- which(gfdl_45_bet_adult$y == miroc_45_bet_adult$y)
+test45_y3 <- which(gfdl_45_bet_adult$y == mpi_45_bet_adult$y)
+length(gfdl_45_bet_adult$y) == length(test45_y1)
+length(gfdl_45_bet_adult$y) == length(test45_y2)
+length(gfdl_45_bet_adult$y) == length(test45_y3)
+
+test45_t1 <- which(gfdl_45_bet_adult$t == ipsl_45_bet_adult$t)
+test45_t2 <- which(gfdl_45_bet_adult$t == miroc_45_bet_adult$t)
+test45_t3 <- which(gfdl_45_bet_adult$t == mpi_45_bet_adult$t)
+length(gfdl_45_bet_adult$t) == length(test45_t1)
+length(gfdl_45_bet_adult$t) == length(test45_t2)
+length(gfdl_45_bet_adult$t) == length(test45_t3)
+
+# Okay, since all the above statements are true, we know that the RCP4.5 
+# scenario data all use the same grid.
+# This means we can reference one grid's indices to access all data
+# and that we can combine data into a single array for easier wrangling
+```
+
+```{r}
+### RCP4.5
+# Combine tuna data into single array
+# For each model, these are t-x-y
+rcp45_combined <- array(NA, dim = c(length(gfdl_45_bet_adult$t),
+                                    length(gfdl_45_bet_adult$x),
+                                    length(gfdl_45_bet_adult$y),
+                                    4),
+                        dimnames = list("t" = gfdl_45_bet_adult$t,
+                                        "x" = gfdl_45_bet_adult$x,
+                                        "y" = gfdl_45_bet_adult$y,
+                                        "m" = c("GFDL", "IPSL", "MIROC", "MPI")))
+rcp45_combined[,,,1] <- gfdl_45_bet_adult$var 
+rcp45_combined[,,,2] <- ipsl_45_bet_adult$var
+rcp45_combined[,,,3] <- miroc_45_bet_adult$var
+rcp45_combined[,,,4] <- mpi_45_bet_adult$var
+
+
+# Note that we're accessing 0-45N and 180-245E for all files.
+
+# empty grid to fill
+delta_biomass_45 <- matrix(NA, nrow = dim(lat_centers)[1], ncol = dim(lon_centers)[1],
+                           dimnames = list(c(lat_centers$y), 
+                                           c(lon_centers$x)))
+
+# loop through new grid cells, pulling info from all four models
+for (r in seq(1, dim(lat_centers)[1], 1)) {
+  for (c in seq(1, dim(lon_centers)[1], 1)) {
+    t1_idx <- which(gfdl_45_bet_adult$t >= 2011 & gfdl_45_bet_adult$t < 2021)
+    t2_idx <- which(gfdl_45_bet_adult$t >= 2044 & gfdl_45_bet_adult$t < 2054)
+    x_idx <- which(gfdl_45_bet_adult$x >= lon_edges$x[c] & gfdl_45_bet_adult$x < lon_edges$x[c+1])
+    y_idx <- which(gfdl_45_bet_adult$y >= lat_edges$y[r] & gfdl_45_bet_adult$y < lat_edges$y[r+1])
+    
+    t1_hold <- rcp45_combined[t1_idx, x_idx, y_idx, ]
+    t2_hold <- rcp45_combined[t2_idx, x_idx, y_idx, ]
+    
+    
+    t1_mean <- mean(t1_hold, na.rm = TRUE)
+    t2_mean <- mean(t2_hold, na.rm = TRUE)
+    
+    delta_biomass_45[r,c] <- t2_mean - t1_mean
+  }
+}
+  
+
+
+
+
+
+
+```
