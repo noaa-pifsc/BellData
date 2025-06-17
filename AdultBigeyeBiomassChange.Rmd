@@ -93,11 +93,48 @@ length(gfdl_45_bet_adult$t) == length(test45_t1)
 length(gfdl_45_bet_adult$t) == length(test45_t2)
 length(gfdl_45_bet_adult$t) == length(test45_t3)
 
+test85_x1 <- which(gfdl_85_bet_adult$x == ipsl_85_bet_adult$x)
+test85_x2 <- which(gfdl_85_bet_adult$x == miroc_85_bet_adult$x)
+test85_x3 <- which(gfdl_85_bet_adult$x == mpi_85_bet_adult$x)
+length(gfdl_85_bet_adult$x) == length(test85_x1)
+length(gfdl_85_bet_adult$x) == length(test85_x2)
+length(gfdl_85_bet_adult$x) == length(test85_x3)
+
+test85_y1 <- which(gfdl_85_bet_adult$y == ipsl_85_bet_adult$y)
+test85_y2 <- which(gfdl_85_bet_adult$y == miroc_85_bet_adult$y)
+test85_y3 <- which(gfdl_85_bet_adult$y == mpi_85_bet_adult$y)
+length(gfdl_85_bet_adult$y) == length(test85_y1)
+length(gfdl_85_bet_adult$y) == length(test85_y2)
+length(gfdl_85_bet_adult$y) == length(test85_y3)
+
+test85_t1 <- which(gfdl_85_bet_adult$t == ipsl_85_bet_adult$t)
+test85_t2 <- which(gfdl_85_bet_adult$t == miroc_85_bet_adult$t)
+test85_t3 <- which(gfdl_85_bet_adult$t == mpi_85_bet_adult$t)
+length(gfdl_85_bet_adult$t) == length(test85_t1)
+length(gfdl_85_bet_adult$t) == length(test85_t2)
+length(gfdl_85_bet_adult$t) == length(test85_t3)
+
+# clean up
+rm(list=ls(pattern="test"))
+
 # Okay, since all the above statements are true, we know that the RCP4.5 
-# scenario data all use the same grid.
-# This means we can reference one grid's indices to access all data
-# and that we can combine data into a single array for easier wrangling
+# scenario data all use the same grid and the RCP8.5 scenario data all use the
+# same brid.
+# This means we can reference one grid's indices to access all data for that
+# scenario and that we can combine data into a single array for easier wrangling.
 ```
+
+```{r}
+# Create empty matrix to fill with lat centroid, lon centroid, and biomass change
+# I'm sure there's got to be a better way to do this.
+BiomassPercentChange <- matrix(NA, 
+                               nrow = (dim(lat_centers)[1] * dim(lon_centers)[1]),
+                               ncol = 4)
+BiomassPercentChange <- data.frame(BiomassPercentChange)
+colnames(BiomassPercentChange) <- c("LatCenter", "LonCenter", "RCP4.5", "RCP8.5")
+
+```
+
 
 ```{r}
 ### RCP4.5
@@ -116,37 +153,85 @@ rcp45_combined[,,,2] <- ipsl_45_bet_adult$var
 rcp45_combined[,,,3] <- miroc_45_bet_adult$var
 rcp45_combined[,,,4] <- mpi_45_bet_adult$var
 
-
-# Note that we're accessing 0-45N and 180-245E for all files.
-
 # empty grid to fill
 delta_biomass_45 <- matrix(NA, nrow = dim(lat_centers)[1], ncol = dim(lon_centers)[1],
                            dimnames = list(c(lat_centers$y), 
                                            c(lon_centers$x)))
 
+### RCP8.5
+# Combine tuna data into single array
+# For each model, these are t-x-y
+rcp85_combined <- array(NA, dim = c(length(gfdl_85_bet_adult$t),
+                                    length(gfdl_85_bet_adult$x),
+                                    length(gfdl_85_bet_adult$y),
+                                    4),
+                        dimnames = list("t" = gfdl_85_bet_adult$t,
+                                        "x" = gfdl_85_bet_adult$x,
+                                        "y" = gfdl_85_bet_adult$y,
+                                        "m" = c("GFDL", "IPSL", "MIROC", "MPI")))
+rcp85_combined[,,,1] <- gfdl_85_bet_adult$var 
+rcp85_combined[,,,2] <- ipsl_85_bet_adult$var
+rcp85_combined[,,,3] <- miroc_85_bet_adult$var
+rcp85_combined[,,,4] <- mpi_85_bet_adult$var
+
+# empty grid to fill
+delta_biomass_85 <- matrix(NA, nrow = dim(lat_centers)[1], ncol = dim(lon_centers)[1],
+                           dimnames = list(c(lat_centers$y), 
+                                           c(lon_centers$x)))
+
 # loop through new grid cells, pulling info from all four models
+# add to BiomassPercentChange matrix
+bpc_counter <- 1 # counter for BiomassPercentChange matrix
 for (r in seq(1, dim(lat_centers)[1], 1)) {
   for (c in seq(1, dim(lon_centers)[1], 1)) {
-    t1_idx <- which(gfdl_45_bet_adult$t >= 2011 & gfdl_45_bet_adult$t < 2021)
-    t2_idx <- which(gfdl_45_bet_adult$t >= 2044 & gfdl_45_bet_adult$t < 2054)
-    x_idx <- which(gfdl_45_bet_adult$x >= lon_edges$x[c] & gfdl_45_bet_adult$x < lon_edges$x[c+1])
-    y_idx <- which(gfdl_45_bet_adult$y >= lat_edges$y[r] & gfdl_45_bet_adult$y < lat_edges$y[r+1])
     
-    t1_hold <- rcp45_combined[t1_idx, x_idx, y_idx, ]
-    t2_hold <- rcp45_combined[t2_idx, x_idx, y_idx, ]
+    # RCP4.5
+    t1_idx_45 <- which(gfdl_45_bet_adult$t >= 2011 & gfdl_45_bet_adult$t < 2021)
+    t2_idx_45 <- which(gfdl_45_bet_adult$t >= 2044 & gfdl_45_bet_adult$t < 2054)
+    x_idx_45 <- which(gfdl_45_bet_adult$x >= lon_edges$x[c] & gfdl_45_bet_adult$x < lon_edges$x[c+1])
+    y_idx_45 <- which(gfdl_45_bet_adult$y >= lat_edges$y[r] & gfdl_45_bet_adult$y < lat_edges$y[r+1])
+    
+    t1_hold_45 <- rcp45_combined[t1_idx_45, x_idx_45, y_idx_45, ]
+    t2_hold_45 <- rcp45_combined[t2_idx_45, x_idx_45, y_idx_45, ]
     
     
-    t1_mean <- mean(t1_hold, na.rm = TRUE)
-    t2_mean <- mean(t2_hold, na.rm = TRUE)
+    t1_mean_45 <- mean(t1_hold_45, na.rm = TRUE)
+    t2_mean_45 <- mean(t2_hold_45, na.rm = TRUE)
     
-    delta_biomass_45[r,c] <- t2_mean - t1_mean
+    delta_biomass_45[r,c] <- (t2_mean_45 - t1_mean_45) / t1_mean_45 * 100
+    
+    # RCP8.5
+    t1_idx_85 <- which(gfdl_85_bet_adult$t >= 2011 & gfdl_85_bet_adult$t < 2021)
+    t2_idx_85 <- which(gfdl_85_bet_adult$t >= 2044 & gfdl_85_bet_adult$t < 2054)
+    x_idx_85 <- which(gfdl_85_bet_adult$x >= lon_edges$x[c] & gfdl_85_bet_adult$x < lon_edges$x[c+1])
+    y_idx_85 <- which(gfdl_85_bet_adult$y >= lat_edges$y[r] & gfdl_85_bet_adult$y < lat_edges$y[r+1])
+    
+    t1_hold_85 <- rcp85_combined[t1_idx_85, x_idx_85, y_idx_85, ]
+    t2_hold_85 <- rcp85_combined[t2_idx_85, x_idx_85, y_idx_85, ]
+    
+    t1_mean_85 <- mean(t1_hold_85, na.rm = TRUE)
+    t2_mean_85 <- mean(t2_hold_85, na.rm = TRUE)
+    
+    delta_biomass_85[r,c] <- (t2_mean_85 - t1_mean_85) / t1_mean_85 * 100
+    
+    # BiomassPercentChange
+    # The right-hand side of lat & lon fills are being treated as 1x1 tibbles
+    # so turning them into numbers
+    # Truncating percent change a 5 significant figures, which is somewhat arbitrary,
+    # but more precise than needed.
+    BiomassPercentChange$LatCenter[bpc_counter] <- as.numeric(lat_centers[r,1])
+    BiomassPercentChange$LonCenter[bpc_counter] <- as.numeric(lon_centers[c,1])
+    BiomassPercentChange$RCP4.5[bpc_counter] <- signif((t2_mean_45 - t1_mean_45) / t1_mean_45 * 100, 5)
+    BiomassPercentChange$RCP8.5[bpc_counter] <- signif((t2_mean_85 - t1_mean_85) / t1_mean_85 * 100, 5)
+    
+    # Counter
+    bpc_counter <- bpc_counter + 1
   }
 }
-  
-
-
-
-
-
-
 ```
+
+```{r}
+# Save output
+write_csv(BiomassPercentChange, "BiomassPercentChange.csv")
+```
+
