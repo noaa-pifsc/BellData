@@ -23,9 +23,28 @@ BiomassChange <- read_csv("BiomassPercentChange.csv", show_col_types = FALSE)
 # Create a map!  Thanks to Johanna for tips on how to do this
 
 rcp45map <- ggplot(BiomassChange, aes(LonCenter, LatCenter, fill = RCP4.5)) + 
-  borders("world2", xlim = c(180.5, 244.5), ylim = c(-0.5, 43.5)) + 
   geom_tile() + 
-  scale_fill_gradient2(low = "blue", mid = "white", high = "red")
+  scale_fill_gradient2(low = "blue", mid = "white", high = "red",
+                       midpoint = 0,
+                       limits = c(-41,41)) +
+  coord_quickmap(c(180.5, 244.5), ylim = c(-0.5, 43.5)) +
+  borders("world2", fill = "#A5AAAF") 
+
+ rcp85map <- ggplot(BiomassChange, aes(LonCenter, LatCenter, fill = RCP8.5)) + 
+  geom_tile() + 
+  scale_fill_gradient2(low = "blue", mid = "white", high = "red",
+                       midpoint = 0,
+                       limits = c(-41, 41)) +
+  coord_quickmap(c(180.5, 244.5), ylim = c(-0.5, 43.5)) +
+  borders("world2", fill = "#A5AAAF") 
+ 
+# pdf("RCP45map.pdf")
+rcp45map
+# dev.off()
+
+# pdf("RCP85map.pdf")
+rcp85map
+# dev.off()
 ```
 
 
