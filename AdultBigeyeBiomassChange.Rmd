@@ -8,8 +8,9 @@ output: html_document
 | which are found in that paper's repository: <https://osf.io/qa8w4/>
 
 # Purpose
-The purpose of this script is to pull out the grid centers and create the new
-4x4-deg grid for the location choice modeling.
+The purpose of this script is to average across models and contributing grid 
+cells to create a grid of average percent biomass change for adult bigeye tuna. 
+The min and max values contributing to each grid cell are also gridded. 
 
 ```{r}
 # Load libraries
