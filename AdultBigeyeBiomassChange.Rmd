@@ -10,7 +10,9 @@ output: html_document
 # Purpose
 The purpose of this script is to average across models and contributing grid 
 cells to create a grid of average percent biomass change for adult bigeye tuna. 
-The min and max values contributing to each grid cell are also gridded. 
+The min and max values contributing to each grid cell are also gridded. And, 
+since it's included in Bell et al. 2021, we'll also note whether all models 
+project the same sign change.
 
 ```{r}
 # Load libraries
@@ -120,27 +122,45 @@ rm(list=ls(pattern="test"))
 
 # Okay, since all the above statements are true, we know that the RCP4.5 
 # scenario data all use the same grid and the RCP8.5 scenario data all use the
-# same brid.
+# same grid.
 # This means we can reference one grid's indices to access all data for that
 # scenario and that we can combine data into a single array for easier wrangling.
 ```
 
 ```{r}
-# Create empty matrix to fill with lat centroid, lon centroid, and biomass change
+# Create empty matrix to fill with lat centroid, lon centroid, and 
+# min, mean, max percent biomass change and sign agreement
 # I'm sure there's got to be a better way to do this.
-BiomassPercentChange <- matrix(NA, 
-                               nrow = (dim(lat_centers)[1] * dim(lon_centers)[1]),
-                               ncol = 4)
-BiomassPercentChange <- data.frame(BiomassPercentChange)
-colnames(BiomassPercentChange) <- c("LatCenter", "LonCenter", "RCP4.5", "RCP8.5")
+Bigeye_Min_BiomassPercentChange <- matrix(NA, 
+                                          nrow = (dim(lat_centers)[1] * dim(lon_centers)[1]),
+                                          ncol = 4)
+Bigeye_Min_BiomassPercentChange <- data.frame(Bigeye_Min_BiomassPercentChange)
+colnames(Bigeye_Min_BiomassPercentChange) <- c("LatCenter", "LonCenter", "RCP4.5", "RCP8.5")
 
+Bigeye_Mean_BiomassPercentChange <- matrix(NA, 
+                                           nrow = (dim(lat_centers)[1] * dim(lon_centers)[1]),
+                                           ncol = 4)
+Bigeye_Mean_BiomassPercentChange <- data.frame(Bigeye_Mean_BiomassPercentChange)
+colnames(Bigeye_Mean_BiomassPercentChange) <- c("LatCenter", "LonCenter", "RCP4.5", "RCP8.5")
+
+Bigeye_Max_BiomassPercentChange <- matrix(NA, 
+                                          nrow = (dim(lat_centers)[1] * dim(lon_centers)[1]),
+                                          ncol = 4)
+Bigeye_Max_BiomassPercentChange <- data.frame(Bigeye_Max_BiomassPercentChange)
+colnames(Bigeye_Max_BiomassPercentChange) <- c("LatCenter", "LonCenter", "RCP4.5", "RCP8.5")
+
+Bigeye_SignAgreement_BiomassPercentChange <- matrix(NA, 
+                                                    nrow = (dim(lat_centers)[1] * dim(lon_centers)[1]),
+                                                    ncol = 4)
+Bigeye_SignAgreement_BiomassPercentChange <- data.frame(Bigeye_SignAgreement_BiomassPercentChange)
+colnames(Bigeye_SignAgreement_BiomassPercentChange) <- c("LatCenter", "LonCenter", "RCP4.5", "RCP8.5")
 ```
 
-
 ```{r}
-### RCP4.5
-# Combine tuna data into single array
+### Combine tuna data into a single array for each scenario
 # For each model, these are t-x-y
+
+# RCP4.5
 rcp45_combined <- array(NA, dim = c(length(gfdl_45_bet_adult$t),
                                     length(gfdl_45_bet_adult$x),
                                     length(gfdl_45_bet_adult$y),
@@ -154,14 +174,7 @@ rcp45_combined[,,,2] <- ipsl_45_bet_adult$var
 rcp45_combined[,,,3] <- miroc_45_bet_adult$var
 rcp45_combined[,,,4] <- mpi_45_bet_adult$var
 
-# empty grid to fill
-delta_biomass_45 <- matrix(NA, nrow = dim(lat_centers)[1], ncol = dim(lon_centers)[1],
-                           dimnames = list(c(lat_centers$y), 
-                                           c(lon_centers$x)))
-
-### RCP8.5
-# Combine tuna data into single array
-# For each model, these are t-x-y
+# RCP8.5
 rcp85_combined <- array(NA, dim = c(length(gfdl_85_bet_adult$t),
                                     length(gfdl_85_bet_adult$x),
                                     length(gfdl_85_bet_adult$y),
@@ -174,56 +187,183 @@ rcp85_combined[,,,1] <- gfdl_85_bet_adult$var
 rcp85_combined[,,,2] <- ipsl_85_bet_adult$var
 rcp85_combined[,,,3] <- miroc_85_bet_adult$var
 rcp85_combined[,,,4] <- mpi_85_bet_adult$var
+```
 
-# empty grid to fill
-delta_biomass_85 <- matrix(NA, nrow = dim(lat_centers)[1], ncol = dim(lon_centers)[1],
-                           dimnames = list(c(lat_centers$y), 
-                                           c(lon_centers$x)))
 
+```{r}
+### empty grids to fill
+# Time steps of interest
+# the RCP4.5 and RCP8.5 grids are different sizes
+t_future_idx_45 <- which(gfdl_45_bet_adult$t >= 2044 & gfdl_45_bet_adult$t < 2054)
+t_future_idx_85 <- which(gfdl_85_bet_adult$t >= 2044 & gfdl_85_bet_adult$t < 2054)
+
+# RCP4.5
+# empty grids to fill
+baseline_biomass_45 <- array(NA, dim = c(length(gfdl_45_bet_adult$x),
+                                         length(gfdl_45_bet_adult$y),
+                                         4),
+                             dimnames = list("x" = gfdl_45_bet_adult$x,
+                                             "y" = gfdl_45_bet_adult$y,
+                                             "m" = c("GFDL", "IPSL", "MIROC", "MPI")))
+
+delta_biomass_45 <- array(NA, dim = c(length(t_future_idx_45),
+                                      length(gfdl_45_bet_adult$x),
+                                      length(gfdl_45_bet_adult$y),
+                                      4),
+                          dimnames = list("t" = gfdl_45_bet_adult$t[t_future_idx_45],
+                                          "x" = gfdl_45_bet_adult$x,
+                                          "y" = gfdl_45_bet_adult$y,
+                                          "m" = c("GFDL", "IPSL", "MIROC", "MPI")))
+
+
+# RCP8.5
+# empty grids to fill
+baseline_biomass_85 <- array(NA, dim = c(length(gfdl_85_bet_adult$x),
+                                         length(gfdl_85_bet_adult$y),
+                                         4),
+                             dimnames = list("x" = gfdl_85_bet_adult$x,
+                                             "y" = gfdl_85_bet_adult$y,
+                                             "m" = c("GFDL", "IPSL", "MIROC", "MPI")))
+
+delta_biomass_85 <- array(NA, dim = c(length(t_future_idx_85),
+                                      length(gfdl_85_bet_adult$x),
+                                      length(gfdl_85_bet_adult$y),
+                                      4),
+                          dimnames = list("t" = gfdl_85_bet_adult$t[t_future_idx_85],
+                                          "x" = gfdl_85_bet_adult$x,
+                                          "y" = gfdl_85_bet_adult$y,
+                                          "m" = c("GFDL", "IPSL", "MIROC", "MPI")))
+```
+
+```{r}
+### Calculate baseline values
+# Time steps of interest
+# the RCP4.5 and RCP8.5 grids are different sizes
+t_baseline_idx_45 <- which(gfdl_45_bet_adult$t >= 2011 & gfdl_45_bet_adult$t < 2021)
+t_baseline_idx_85 <- which(gfdl_85_bet_adult$t >= 2011 & gfdl_85_bet_adult$t < 2021)
+
+# Loop through each model and grid cell, averaging across all time steps
+# RCP4.5
+for (cm in seq(1, 4, 1)) {
+  for (r in seq(1, length(gfdl_45_bet_adult$y), 1)) {
+    for (c in seq(1, length(gfdl_45_bet_adult$x))) {
+      # Select period of interest
+      base_hold_45 <- rcp45_combined[t_baseline_idx_45, c, r, cm]
+      
+      baseline_biomass_45[c, r, cm] <- mean(base_hold_45, na.rm = TRUE)
+    }
+  }
+}
+# Clean up
+rm(base_hold_45, cm, r, c)
+
+# RCP8.5
+for (cm in seq(1, 4, 1)) {
+  for (r in seq(1, length(gfdl_85_bet_adult$y), 1)) {
+    for (c in seq(1, length(gfdl_85_bet_adult$x))) {
+      # Select period of interest
+      base_hold_85 <- rcp85_combined[t_baseline_idx_85, c, r, cm]
+      
+      baseline_biomass_85[c, r, cm] <- mean(base_hold_85, na.rm = TRUE)
+    }
+  }
+}
+
+# Clean up
+rm(base_hold_85, cm, r, c)
+```
+
+```{r}
+### Calculate change in biomass
+# Loop through each time step, model, and grid cell, noting the percent difference 
+# from the baseline (future - baseline)
+# the RCP4.5 and RCP8.5 grids are different sizes
+
+# RCP4.5
+for (t in seq(1, length(t_future_idx_45), 1)) {
+  for (cm in seq(1, 4, 1)) {
+    for (r in seq(1, length(gfdl_45_bet_adult$y), 1)) {
+      for (c in seq(1, length(gfdl_45_bet_adult$x), 1)) {
+        biomass_45_hold <- rcp45_combined[t_future_idx_45[t], c, r, cm]
+        
+        delta_biomass_45[t, c, r, cm] <- (biomass_45_hold - baseline_biomass_45[c, r, cm]) / baseline_biomass_45[c, r, cm] * 100
+      }
+    }
+  }
+}
+# Clean up
+rm(t, cm, r, c, biomass_45_hold)
+
+# RCP8.5
+for (t in seq(1, length(t_future_idx_85), 1)) {
+  for (cm in seq(1, 4, 1)) {
+    for (r in seq(1, length(gfdl_85_bet_adult$y), 1)) {
+      for (c in seq(1, length(gfdl_85_bet_adult$x), 1)) {
+        biomass_85_hold <- rcp85_combined[t_future_idx_85[t], c, r, cm]
+        
+        delta_biomass_85[t, c, r, cm] <- (biomass_85_hold - baseline_biomass_85[c, r, cm]) / baseline_biomass_85[c, r, cm] * 100
+      }
+    }
+  }
+}
+# Clean up
+rm(t, cm, r, c, biomass_85_hold)
+```
+
+``` {r}
 # loop through new grid cells, pulling info from all four models
-# add to BiomassPercentChange matrix
+# min, mean, max, and sign agreement 
+# Truncating percent change a 5 significant figures, which is somewhat arbitrary,
+# but more precise than needed.
 bpc_counter <- 1 # counter for BiomassPercentChange matrix
 for (r in seq(1, dim(lat_centers)[1], 1)) {
   for (c in seq(1, dim(lon_centers)[1], 1)) {
     
     # RCP4.5
-    t1_idx_45 <- which(gfdl_45_bet_adult$t >= 2011 & gfdl_45_bet_adult$t < 2021)
-    t2_idx_45 <- which(gfdl_45_bet_adult$t >= 2044 & gfdl_45_bet_adult$t < 2054)
     x_idx_45 <- which(gfdl_45_bet_adult$x >= lon_edges$x[c] & gfdl_45_bet_adult$x < lon_edges$x[c+1])
     y_idx_45 <- which(gfdl_45_bet_adult$y >= lat_edges$y[r] & gfdl_45_bet_adult$y < lat_edges$y[r+1])
     
-    t1_hold_45 <- rcp45_combined[t1_idx_45, x_idx_45, y_idx_45, ]
-    t2_hold_45 <- rcp45_combined[t2_idx_45, x_idx_45, y_idx_45, ]
+    delta_hold_45 <- delta_biomass_45[, x_idx_45, y_idx_45, ]
     
+    Bigeye_Min_BiomassPercentChange$RCP4.5[bpc_counter] <- signif(min(delta_hold_45, na.rm = TRUE), 5)
+    Bigeye_Mean_BiomassPercentChange$RCP4.5[bpc_counter] <- signif(mean(delta_hold_45, na.rm = TRUE), 5)
+    Bigeye_Max_BiomassPercentChange$RCP4.5[bpc_counter] <- signif(max(delta_hold_45, na.rm = TRUE), 5)
     
-    t1_mean_45 <- mean(t1_hold_45, na.rm = TRUE)
-    t2_mean_45 <- mean(t2_hold_45, na.rm = TRUE)
-    
-    delta_biomass_45[r,c] <- (t2_mean_45 - t1_mean_45) / t1_mean_45 * 100
+    # Looking across 120 time steps, 2 zonal grid cells, 2 meridional grid cells, 4 earth system models
+    # 120 x 2 x 2 x 4 = 1920
+    if (sum(is.na(delta_hold_45)) + sum(delta_hold_45 > 0, na.rm = TRUE) == 1920 | 
+        sum(is.na(delta_hold_45)) + sum(delta_hold_45 > 0, na.rm = TRUE) == 0) {
+      Bigeye_SignAgreement_BiomassPercentChange$RCP4.5[bpc_counter] <- 1
+    }
     
     # RCP8.5
-    t1_idx_85 <- which(gfdl_85_bet_adult$t >= 2011 & gfdl_85_bet_adult$t < 2021)
-    t2_idx_85 <- which(gfdl_85_bet_adult$t >= 2044 & gfdl_85_bet_adult$t < 2054)
     x_idx_85 <- which(gfdl_85_bet_adult$x >= lon_edges$x[c] & gfdl_85_bet_adult$x < lon_edges$x[c+1])
     y_idx_85 <- which(gfdl_85_bet_adult$y >= lat_edges$y[r] & gfdl_85_bet_adult$y < lat_edges$y[r+1])
     
-    t1_hold_85 <- rcp85_combined[t1_idx_85, x_idx_85, y_idx_85, ]
-    t2_hold_85 <- rcp85_combined[t2_idx_85, x_idx_85, y_idx_85, ]
+    delta_hold_85 <- delta_biomass_85[, x_idx_85, y_idx_85, ]
     
-    t1_mean_85 <- mean(t1_hold_85, na.rm = TRUE)
-    t2_mean_85 <- mean(t2_hold_85, na.rm = TRUE)
+    Bigeye_Min_BiomassPercentChange$RCP8.5[bpc_counter] <- signif(min(delta_hold_85, na.rm = TRUE), 5)
+    Bigeye_Mean_BiomassPercentChange$RCP8.5[bpc_counter] <- signif(mean(delta_hold_85, na.rm = TRUE), 5)
+    Bigeye_Max_BiomassPercentChange$RCP8.5[bpc_counter] <- signif(max(delta_hold_85, na.rm = TRUE), 5)
     
-    delta_biomass_85[r,c] <- (t2_mean_85 - t1_mean_85) / t1_mean_85 * 100
+    # Looking across 120 time steps, 2 zonal grid cells, 2 meridional grid cells, 4 earth system models
+    # 120 x 2 x 2 x 4 = 1920
+    if (sum(is.na(delta_hold_85)) + sum(delta_hold_85 > 0, na.rm = TRUE) == 1920 | 
+        sum(is.na(delta_hold_85)) + sum(delta_hold_85 > 0, na.rm = TRUE) == 0) {
+      Bigeye_SignAgreement_BiomassPercentChange$RCP8.5[bpc_counter] <- 1
+    } 
     
-    # BiomassPercentChange
     # The right-hand side of lat & lon fills are being treated as 1x1 tibbles
     # so turning them into numbers
-    # Truncating percent change a 5 significant figures, which is somewhat arbitrary,
-    # but more precise than needed.
-    BiomassPercentChange$LatCenter[bpc_counter] <- as.numeric(lat_centers[r,1])
-    BiomassPercentChange$LonCenter[bpc_counter] <- as.numeric(lon_centers[c,1])
-    BiomassPercentChange$RCP4.5[bpc_counter] <- signif((t2_mean_45 - t1_mean_45) / t1_mean_45 * 100, 5)
-    BiomassPercentChange$RCP8.5[bpc_counter] <- signif((t2_mean_85 - t1_mean_85) / t1_mean_85 * 100, 5)
+    Bigeye_Min_BiomassPercentChange$LatCenter[bpc_counter] <- as.numeric(lat_centers[r,1])
+    Bigeye_Mean_BiomassPercentChange$LatCenter[bpc_counter] <- as.numeric(lat_centers[r,1])
+    Bigeye_Max_BiomassPercentChange$LatCenter[bpc_counter] <- as.numeric(lat_centers[r,1])
+    Bigeye_SignAgreement_BiomassPercentChange$LatCenter[bpc_counter] <- as.numeric(lat_centers[r,1])
+    
+    Bigeye_Min_BiomassPercentChange$LonCenter[bpc_counter] <- as.numeric(lon_centers[c,1])
+    Bigeye_Mean_BiomassPercentChange$LonCenter[bpc_counter] <- as.numeric(lon_centers[c,1])
+    Bigeye_Max_BiomassPercentChange$LonCenter[bpc_counter] <- as.numeric(lon_centers[c,1])
+    Bigeye_SignAgreement_BiomassPercentChange$LonCenter[bpc_counter] <- as.numeric(lon_centers[c,1])
     
     # Counter
     bpc_counter <- bpc_counter + 1
@@ -233,6 +373,8 @@ for (r in seq(1, dim(lat_centers)[1], 1)) {
 
 ```{r}
 # Save output
-write_csv(BiomassPercentChange, "BiomassPercentChange.csv")
+write_csv(Bigeye_Min_BiomassPercentChange, "Bigeye_Min_BiomassPercentChange.csv")
+write_csv(Bigeye_Mean_BiomassPercentChange, "Bigeye_Mean_BiomassPercentChange.csv")
+write_csv(Bigeye_Max_BiomassPercentChange, "Bigeye_Max_BiomassPercentChange.csv")
+write_csv(Bigeye_SignAgreement_BiomassPercentChange, "Bigeye_SignAgreement_BiomassPercentChange.csv")
 ```
-
