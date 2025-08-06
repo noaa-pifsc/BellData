@@ -16,7 +16,19 @@ library(here)
 
 ```{r}
 # Load data
-BiomassChange <- read_csv("BiomassPercentChange.csv", show_col_types = FALSE)
+BiomassChange <- read_csv("Yellowfin_Mean_BiomassPercentChange.csv", show_col_types = FALSE)
+SignAgreement <- read_csv("Yellowfin_SignAgreement_BiomassPercentChange.csv", show_col_types = FALSE)
+```
+
+```{r}
+# Create a list of only points where all models agree on sign, one for each scenario
+SA_45 <- SignAgreement |>
+  select(LatCenter, LonCenter, RCP4.5) |>
+  filter(!is.na(RCP4.5))
+
+SA_85 <- SignAgreement |>
+  select(LatCenter, LonCenter, RCP8.5) |>
+  filter(!is.na(RCP8.5))
 ```
 
 ```{r}
@@ -26,7 +38,8 @@ rcp45map <- ggplot(BiomassChange, aes(LonCenter, LatCenter, fill = RCP4.5)) +
   geom_tile() + 
   scale_fill_gradient2(low = "blue", mid = "white", high = "red",
                        midpoint = 0,
-                       limits = c(-41,41)) +
+                       limits = c(-70,70)) +
+  geom_point(SA_45, mapping = aes(LonCenter, LatCenter), color = "black") +
   coord_quickmap(c(180.5, 244.5), ylim = c(-0.5, 43.5)) +
   borders("world2", fill = "#A5AAAF") 
 
@@ -34,17 +47,18 @@ rcp45map <- ggplot(BiomassChange, aes(LonCenter, LatCenter, fill = RCP4.5)) +
   geom_tile() + 
   scale_fill_gradient2(low = "blue", mid = "white", high = "red",
                        midpoint = 0,
-                       limits = c(-41, 41)) +
+                       limits = c(-70, 70)) +
+  geom_point(SA_85, mapping = aes(LonCenter, LatCenter), color = "black") +
   coord_quickmap(c(180.5, 244.5), ylim = c(-0.5, 43.5)) +
   borders("world2", fill = "#A5AAAF") 
  
-# pdf("RCP45map.pdf")
+pdf("Yellowfin_RCP45map.pdf")
 rcp45map
-# dev.off()
+dev.off()
 
-# pdf("RCP85map.pdf")
+pdf("Yellowfin_RCP85map.pdf")
 rcp85map
-# dev.off()
+dev.off()
 ```
 
 
