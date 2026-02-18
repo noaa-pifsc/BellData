@@ -1,0 +1,101 @@
+---
+title: "SetChangeMaps"
+output: html_document
+---
+
+# Purpose
+
+The purpose of this script is to create maps of projected change in seep sets as
+a result of model factors. 
+
+```{r}
+# Set up environment
+library(tidyverse)
+library(here)
+library(readxl)
+```
+
+```{r}
+# Load data
+ModeledSetChange <- read_excel("SiteChanges_Phoebe.xls")
+```
+
+```{r}
+# Wrangle data
+# Convert to 360-deg longitude
+ModeledSetChange$LonCenter <- ModeledSetChange$LonCenter + 360
+
+# To explore min and max change in number of sets
+# apply(ModeledSetChange, 2, min)
+# apply(ModeledSetChange, 2, max)
+```
+
+```{r}
+# Create each panel and combine in Illustrator
+rcp45minmap <- ggplot(ModeledSetChange, aes(LonCenter, LatCenter, fill = chg4min)) + 
+  geom_tile() + 
+  scale_fill_gradient2(low = "blue", mid = "white", high = "red",
+                       midpoint = 0,
+                       limits = c(-255,255)) +
+  coord_quickmap(c(180.5, 244.5), ylim = c(-0.5, 43.5)) +
+  annotation_borders("world2", fill = "#A5AAAF") 
+pdf(here("Figures", "rcp45minmap.pdf"))
+rcp45minmap
+dev.off()
+
+rcp45meanmap <- ggplot(ModeledSetChange, aes(LonCenter, LatCenter, fill = chg4mean)) + 
+  geom_tile() + 
+  scale_fill_gradient2(low = "blue", mid = "white", high = "red",
+                       midpoint = 0,
+                       limits = c(-255,255)) +
+  coord_quickmap(c(180.5, 244.5), ylim = c(-0.5, 43.5)) +
+  annotation_borders("world2", fill = "#A5AAAF")
+pdf(here("Figures", "rcp45meanmap.pdf"))
+rcp45meanmap
+dev.off()
+
+rcp45maxmap <- ggplot(ModeledSetChange, aes(LonCenter, LatCenter, fill = chg4max)) + 
+  geom_tile() + 
+  scale_fill_gradient2(low = "blue", mid = "white", high = "red",
+                       midpoint = 0,
+                       limits = c(-255,255)) +
+  coord_quickmap(c(180.5, 244.5), ylim = c(-0.5, 43.5)) +
+  annotation_borders("world2", fill = "#A5AAAF")
+pdf(here("Figures", "rcp45maxmap.pdf"))
+rcp45maxmap
+dev.off()
+
+rcp85minmap <- ggplot(ModeledSetChange, aes(LonCenter, LatCenter, fill = chg8min)) + 
+  geom_tile() + 
+  scale_fill_gradient2(low = "blue", mid = "white", high = "red",
+                       midpoint = 0,
+                       limits = c(-255,255)) +
+  coord_quickmap(c(180.5, 244.5), ylim = c(-0.5, 43.5)) +
+  annotation_borders("world2", fill = "#A5AAAF") 
+pdf(here("Figures", "rcp85minmap.pdf"))
+rcp85minmap
+dev.off()
+
+rcp85meanmap <- ggplot(ModeledSetChange, aes(LonCenter, LatCenter, fill = chg8mean)) + 
+  geom_tile() + 
+  scale_fill_gradient2(low = "blue", mid = "white", high = "red",
+                       midpoint = 0,
+                       limits = c(-255,255)) +
+  coord_quickmap(c(180.5, 244.5), ylim = c(-0.5, 43.5)) +
+  annotation_borders("world2", fill = "#A5AAAF")
+pdf(here("Figures", "rcp85meanmap.pdf"))
+rcp85meanmap
+dev.off()
+
+rcp85maxmap <- ggplot(ModeledSetChange, aes(LonCenter, LatCenter, fill = chg8max)) + 
+  geom_tile() + 
+  scale_fill_gradient2(low = "blue", mid = "white", high = "red",
+                       midpoint = 0,
+                       limits = c(-255,255)) +
+  coord_quickmap(c(180.5, 244.5), ylim = c(-0.5, 43.5)) +
+  annotation_borders("world2", fill = "#A5AAAF")
+pdf(here("Figures", "rcp85maxmap.pdf"))
+rcp85maxmap
+dev.off()
+```
+
