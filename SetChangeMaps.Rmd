@@ -10,18 +10,29 @@ a result of model factors.
 
 ```{r}
 # Set up environment
-library(tidyverse)
+library(tidyverse, quietly = TRUE)
 library(here)
 library(readxl)
 ```
 
 ```{r}
 # Load data
-ModeledSetChange <- read_excel("SiteChanges_Phoebe.xls")
+# Initial data, erroneous change but correct locations
+ModeledLocations <- read_excel("SiteChanges_Phoebe.xls") 
+# Corrected data, but no locations
+ModeledChanges <- read_excel("Corrected Scenario Changes.xlsx")
 ```
 
 ```{r}
 # Wrangle data
+# Join data
+# First, pare down to locations only and rename for consistency
+ModeledLocations <- ModeledLocations |>
+  select(`Site Number in Model`, LatCenter, LonCenter) |>
+  rename(Sitenum = `Site Number in Model`)
+# Now, join
+ModeledSetChange <- left_join(ModeledLocations, ModeledChanges, join_by(Sitenum))
+
 # Convert to 360-deg longitude
 ModeledSetChange$LonCenter <- ModeledSetChange$LonCenter + 360
 
