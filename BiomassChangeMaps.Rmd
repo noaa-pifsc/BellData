@@ -10,55 +10,203 @@ tuna biomass.
 
 ```{r}
 # Set up environment
-library(tidyverse)
+library(tidyverse, quietly = TRUE)
 library(here)
+library(readxl)
 ```
 
 ```{r}
 # Load data
-BiomassChange <- read_csv("Yellowfin_Mean_BiomassPercentChange.csv", show_col_types = FALSE)
-SignAgreement <- read_csv("Yellowfin_SignAgreement_BiomassPercentChange.csv", show_col_types = FALSE)
+ByeMinBiomassChange <- read_csv("Bigeye_Min_BiomassPercentChange.csv", show_col_types = FALSE)
+ByeMeanBiomassChange <- read_csv("Bigeye_Mean_BiomassPercentChange.csv", show_col_types = FALSE)
+ByeMaxBiomassChange <- read_csv("Bigeye_Max_BiomassPercentChange.csv", show_col_types = FALSE)
+ByeSignAgreement <- read_csv("Bigeye_SignAgreement_BiomassPercentChange.csv", show_col_types = FALSE)
+
+YftMinBiomassChange <- read_csv("Yellowfin_Min_BiomassPercentChange.csv", show_col_types = FALSE)
+YftMeanBiomassChange <- read_csv("Yellowfin_Mean_BiomassPercentChange.csv", show_col_types = FALSE)
+YftMaxBiomassChange <- read_csv("Yellowfin_Max_BiomassPercentChange.csv", show_col_types = FALSE)
+YftSignAgreement <- read_csv("Yellowfin_SignAgreement_BiomassPercentChange.csv", show_col_types = FALSE)
+
+# Erroneous set change but correct locations
+ModeledLocations <- read_excel("SiteChanges_Phoebe.xls") 
 ```
 
 ```{r}
+# Wrangle data
+# Keep only locations, for simplicity
+ModeledLocations <- ModeledLocations |>
+  select(LatCenter, LonCenter)
+
+# Convert to 360-deg longitude
+ModeledLocations$LonCenter <- ModeledLocations$LonCenter + 360
+```
+
+
+```{r}
+# Filter biomass change to only grid cells used in the location choice model
+# Do this by joining only the location choice locations
+ByeMin <- left_join(ModeledLocations, ByeMinBiomassChange, by = join_by(LatCenter, LonCenter))
+ByeMean <- left_join(ModeledLocations, ByeMeanBiomassChange, by = join_by(LatCenter, LonCenter))
+ByeMax <- left_join(ModeledLocations, ByeMaxBiomassChange, by = join_by(LatCenter, LonCenter))
+ByeSA <- left_join(ModeledLocations, ByeSignAgreement, by = join_by(LatCenter, LonCenter))
+
+YftMin <- left_join(ModeledLocations, YftMinBiomassChange, by = join_by(LatCenter, LonCenter))
+YftMean <- left_join(ModeledLocations, YftMeanBiomassChange, by = join_by(LatCenter, LonCenter))
+YftMax <- left_join(ModeledLocations, YftMaxBiomassChange, by = join_by(LatCenter, LonCenter))
+YftSA <- left_join(ModeledLocations, YftSignAgreement, by = join_by(LatCenter, LonCenter))
+```
+
+
+```{r}
 # Create a list of only points where all models agree on sign, one for each scenario
-SA_45 <- SignAgreement |>
+Bye_SA_45 <- ByeSA |>
   select(LatCenter, LonCenter, RCP4.5) |>
   filter(!is.na(RCP4.5))
 
-SA_85 <- SignAgreement |>
+Bye_SA_85 <- ByeSA |>
+  select(LatCenter, LonCenter, RCP8.5) |>
+  filter(!is.na(RCP8.5))
+
+Yft_SA_45 <- YftSA |>
+  select(LatCenter, LonCenter, RCP4.5) |>
+  filter(!is.na(RCP4.5))
+
+Yft_SA_85 <- YftSA |>
   select(LatCenter, LonCenter, RCP8.5) |>
   filter(!is.na(RCP8.5))
 ```
 
 ```{r}
-# Create a map!  Thanks to Johanna for tips on how to do this
+# Look at the data to find common axes limits
+# apply(ByeMin, 2, min)
+# apply(YftMin, 2, min)
+# 
+# apply(ByeMax, 2, max)
+# apply(YftMax, 2, max)
+```
+```{r}
+# Clean up
+rm(ByeMinBiomassChange, ByeMeanBiomassChange, ByeMaxBiomassChange, ByeSignAgreement)
+rm(YftMinBiomassChange, YftMeanBiomassChange, YftMaxBiomassChange, YftSignAgreement)
+rm(ModeledLocations)
+```
 
-rcp45map <- ggplot(BiomassChange, aes(LonCenter, LatCenter, fill = RCP4.5)) + 
-  geom_tile() + 
-  scale_fill_gradient2(low = "blue", mid = "white", high = "red",
-                       midpoint = 0,
-                       limits = c(-70,70)) +
-  geom_point(SA_45, mapping = aes(LonCenter, LatCenter), color = "black") +
-  coord_quickmap(c(180.5, 244.5), ylim = c(-0.5, 43.5)) +
-  borders("world2", fill = "#A5AAAF") 
 
- rcp85map <- ggplot(BiomassChange, aes(LonCenter, LatCenter, fill = RCP8.5)) + 
-  geom_tile() + 
-  scale_fill_gradient2(low = "blue", mid = "white", high = "red",
-                       midpoint = 0,
-                       limits = c(-70, 70)) +
-  geom_point(SA_85, mapping = aes(LonCenter, LatCenter), color = "black") +
-  coord_quickmap(c(180.5, 244.5), ylim = c(-0.5, 43.5)) +
-  borders("world2", fill = "#A5AAAF") 
- 
-pdf("Yellowfin_RCP45map.pdf")
-rcp45map
+```{r}
+# Create maps!  Thanks to Johanna for tips on how to do this
+# We'll write functions for this since we're making 12 maps
+# Two functions since I'm having a hard time calling the column in the function
+# Frustratingly, saving the figures in the functions isn't working 
+
+BioMaps_45 <- function(BiomassChange, SignAgreement) {
+  m45 <- ggplot(BiomassChange, aes(LonCenter, LatCenter, fill = RCP4.5)) +
+       geom_tile() +
+       scale_fill_gradient2(low = "blue", mid = "white", high = "red",
+                            midpoint = 0,
+                            limit = c(-130, 130)) +
+       geom_point(SignAgreement, mapping = aes(LonCenter, LatCenter), color = "black") +
+       coord_quickmap(c(180.5, 244.5), ylim = c(-0.5, 43.5)) +
+       annotation_borders("world2", fill = "#A5AAAF")
+}
+
+BioMaps_85 <- function(BiomassChange, SignAgreement) {
+  m85 <- ggplot(BiomassChange, aes(LonCenter, LatCenter, fill = RCP8.5)) +
+       geom_tile() +
+       scale_fill_gradient2(low = "blue", mid = "white", high = "red",
+                            midpoint = 0,
+                            limit = c(-130, 130)) +
+       geom_point(SignAgreement, mapping = aes(LonCenter, LatCenter), color = "black") +
+       coord_quickmap(c(180.5, 244.5), ylim = c(-0.5, 43.5)) +
+       annotation_borders("world2", fill = "#A5AAAF")
+}
+
+# Tedious workaround
+m45 <- BioMaps_45(ByeMin, Bye_SA_45)
+pdf(here("Figures", "ByeMin_RCP4.5_map.pdf"))
+m45
+dev.off()
+m45 <- BioMaps_45(ByeMean, Bye_SA_45)
+pdf(here("Figures", "ByeMean_RCP4.5_map.pdf"))
+m45
+dev.off()
+m45 <- BioMaps_45(ByeMax, Bye_SA_45)
+pdf(here("Figures", "ByeMax_RCP4.5_map.pdf"))
+m45
 dev.off()
 
-pdf("Yellowfin_RCP85map.pdf")
-rcp85map
+m85 <- BioMaps_85(ByeMin, Bye_SA_85)
+pdf(here("Figures", "ByeMin_RCP8.5_map.pdf"))
+m85
 dev.off()
+m85 <- BioMaps_85(ByeMean, Bye_SA_85)
+pdf(here("Figures", "ByeMean_RCP8.5_map.pdf"))
+m85
+dev.off()
+m85 <- BioMaps_85(ByeMax, Bye_SA_85)
+pdf(here("Figures", "ByeMax_RCP8.5_map.pdf"))
+m85
+dev.off()
+
+
+
+
+
+
+
+m45 <- BioMaps_45(YftMin, Yft_SA_45)
+pdf(here("Figures", "YftMin_RCP4.5_map.pdf"))
+m45
+dev.off()
+m45 <- BioMaps_45(YftMean, Yft_SA_45)
+pdf(here("Figures", "YftMean_RCP4.5_map.pdf"))
+m45
+dev.off()
+m45 <- BioMaps_45(YftMax, Yft_SA_45)
+pdf(here("Figures", "YftMax_RCP4.5_map.pdf"))
+m45
+dev.off()
+
+m85 <- BioMaps_85(YftMin, Yft_SA_85)
+pdf(here("Figures", "YftMin_RCP8.5_map.pdf"))
+m85
+dev.off()
+m85 <- BioMaps_85(YftMean, Yft_SA_85)
+pdf(here("Figures", "YftMean_RCP8.5_map.pdf"))
+m85
+dev.off()
+m85 <- BioMaps_85(YftMax, Yft_SA_85)
+pdf(here("Figures", "YftMax_RCP8.5_map.pdf"))
+m85
+dev.off()
+```
+
+```{r}
+# Older stuff, commenting out
+# rcp45map <- ggplot(BiomassChange, aes(LonCenter, LatCenter, fill = RCP4.5)) + 
+#   geom_tile() + 
+#   scale_fill_gradient2(low = "blue", mid = "white", high = "red",
+#                        midpoint = 0,
+#                        limits = c(-70,70)) +
+#   geom_point(SA_45, mapping = aes(LonCenter, LatCenter), color = "black") +
+#   coord_quickmap(c(180.5, 244.5), ylim = c(-0.5, 43.5)) +
+#   borders("world2", fill = "#A5AAAF") 
+# 
+#  rcp85map <- ggplot(BiomassChange, aes(LonCenter, LatCenter, fill = RCP8.5)) + 
+#   geom_tile() + 
+#   scale_fill_gradient2(low = "blue", mid = "white", high = "red",
+#                        midpoint = 0,
+#                        limits = c(-70, 70)) +
+#   geom_point(SA_85, mapping = aes(LonCenter, LatCenter), color = "black") +
+#   coord_quickmap(c(180.5, 244.5), ylim = c(-0.5, 43.5)) +
+#   borders("world2", fill = "#A5AAAF") 
+#  
+# pdf("Yellowfin_RCP45map.pdf")
+# rcp45map
+# dev.off()
+# 
+# pdf("Yellowfin_RCP85map.pdf")
+# rcp85map
+# dev.off()
 ```
 
 
