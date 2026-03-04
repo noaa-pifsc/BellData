@@ -84,6 +84,7 @@ Yft_SA_85 <- YftSA |>
 # apply(ByeMax, 2, max)
 # apply(YftMax, 2, max)
 ```
+
 ```{r}
 # Clean up
 rm(ByeMinBiomassChange, ByeMeanBiomassChange, ByeMaxBiomassChange, ByeSignAgreement)
